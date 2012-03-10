@@ -1,7 +1,13 @@
--module(webserver).
--export([listen/1]).
+-module(mews_webserver).
+-export([listen/1, start/1]).
 
 -define(TCP_OPTIONS, [binary, {packet, 0}, {active, false}, {reuseaddr, true}]).
+
+start(SupCFG) -> 
+    [{ip, _Ip},
+     {port, Port}] = SupCFG,
+    listen(Port).
+    
 
 listen(Port) ->
     {ok, LSocket} = gen_tcp:listen(Port, ?TCP_OPTIONS),

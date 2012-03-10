@@ -24,5 +24,18 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    Processes = [web_server()],
+    Strategy = {one_for_one, 10, 10},
+    {ok,
+     {Strategy, lists:flatten(Processes)}}.
+
+
+web_server() ->
+    Cfg = [{ip,      {127,0,0,1}},
+	   {port,    8008}],
+    ModName = mews_webserver,
+    Mfa = {mews_webserver, start, [Cfg]},
+    {ModName, Mfa, permanent, 5000, worker, dynamic}.
+
+%%    {ok, { {one_for_one, 5, 10}, []} }.
 
