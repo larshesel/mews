@@ -1,4 +1,4 @@
--module(mews_main).
+-module(mews).
 
 -export([start/0, stop/0]).
 
