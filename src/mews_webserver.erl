@@ -66,7 +66,7 @@ parse_request_line([FirstToken | Tail]) ->
 
 handle_get_request(Socket, N) ->	
     Page=build_header(["Hello World: ", integer_to_list(N)]),
-    gen_tcp:send(Socket, lists:flatten(Page)),
+    gen_tcp:send(Socket, Page),
     gen_tcp:close(Socket).    
 
 build_header(Data) -> 
