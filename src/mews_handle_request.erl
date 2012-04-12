@@ -14,8 +14,13 @@ handle_request(Socket, ParsedRequest) ->
 handle_get_request(Socket, Data) ->
     Uri = proplists:get_value(uri, Data),
     error_logger:info_msg("handle_get_request: reading file: ~p~n", [Uri]),
-    {ok, Binary} = file:read_file("./test_data/webroot/index.html"),
-    gen_tcp:send(Socket, build_header(Binary)),
+    File = "./test_data/webroot/index.html", 
+    case filelib:is_regular(File) of
+	true ->     
+	    {ok, Binary} = file:read_file("./test_data/webroot/index.html"),
+	    gen_tcp:send(Socket, build_header(Binary));
+	false-> ok
+    end,
     gen_tcp:close(Socket).    
 
 build_header(Data) -> 
@@ -31,3 +36,5 @@ build_header(Data) ->
     
 get_server() ->
     "Server: MyErlangWebserver. Erlang-home-made-and-backed 0.01\n".
+
+
