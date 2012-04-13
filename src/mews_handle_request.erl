@@ -8,7 +8,8 @@ handle_request(Socket, ParsedRequest) ->
 		get ->
 			handle_get_request(Socket, Data);
 		_ ->
-			error_logger:warning_msg("Request not supported: ~p~n:", [ParsedRequest])
+			error_logger:warning_msg("Request not supported: ~p~n:", [ParsedRequest]),			
+			gen_tcp:send(Socket, build_header(status_501_not_implemented(), status_501_not_implemented_data()))
 	end.
 
 handle_get_request(Socket, Data) ->
@@ -36,14 +37,20 @@ serve_local_file(Socket, Uri) ->
 			gen_tcp:send(Socket, build_header(status_404_not_found(), status_404_not_found_data()))
 	end.
 
+status_501_not_implemented() ->
+	["HTTP/1.1 501 Not Implemented\r\n"].
+
+status_501_not_implemented_data() ->
+	["<html><body><p>501 Not Implemented</p></body></html>\n"].
+
 status_404_not_found() ->
 	["HTTP/1.1 404 Not Found\r\n"].
 
 status_200_ok() ->
-	["HTTP/1.1 404 Not Found\r\n"].
+	["HTTP/1.1 202 OK\r\n"].
 
 status_404_not_found_data() ->
-	["<html><body><p>404 page not found</p></body></html>"].
+	["<html><body><p>404 page not found</p></body></html>\n"].
 
 
 is_local_file(_Uri) ->
@@ -66,5 +73,3 @@ get_server() ->
 
 get_webroot() ->
 	"./test_data/webroot/".
-
-
