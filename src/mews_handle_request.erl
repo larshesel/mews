@@ -1,25 +1,26 @@
 -module(mews_handle_request).
 -export([handle_request/2]).
 
-handle_request(Socket, ParsedRequest) -> 
-	{Request, Data} = ParsedRequest,
-	error_logger:info_msg("handle_request: Request: ~p~n:", [ParsedRequest]),
-	case Request of 
+-include("request.hrl").
+
+handle_request(Socket, Request) -> 
+	%%{Request, Data} = ParsedRequest#request.,
+	error_logger:info_msg("handle_request: Request: ~p~n:", [Request]),
+	case Request#request.method of 
 		get ->
-			handle_get_request(Socket, Data);
+			handle_get_request(Socket, Request);
 		_ ->
-			error_logger:warning_msg("Request not supported: ~p~n:", [ParsedRequest]),			
+			error_logger:warning_msg("Request not supported: ~p~n:", [Request]),			
 			gen_tcp:send(Socket, build_header(status_501_not_implemented(), status_501_not_implemented_data()))
 	end.
 
-handle_get_request(Socket, Data) ->
-	Uri = proplists:get_value(uri, Data),
-	error_logger:info_msg("handle_get_request for uri: ~p~n", [Uri]),
+handle_get_request(Socket, Request) ->
+	error_logger:info_msg("handle_get_request for uri: ~p~n", [Request#request.uri]),
 	
 	%% determine if uri can be served locally:
-	case is_local_file(Uri) of 
+	case is_local_file(Request#request.uri) of 
 		true ->
-			serve_local_file(Socket, Uri);
+			serve_local_file(Socket, Request#request.uri);
 		false ->	
 			redirect
 	end,
