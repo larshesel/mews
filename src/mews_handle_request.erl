@@ -3,8 +3,11 @@
 
 -include("request.hrl").
 
+%%%===================================================================
+%%% API
+%%%===================================================================
+
 handle_request(Socket, Request) -> 
-	%%{Request, Data} = ParsedRequest#request.,
 	error_logger:info_msg("handle_request: Request: ~p~n:", [Request]),
 	case Request#request.method of 
 		get ->
@@ -14,6 +17,11 @@ handle_request(Socket, Request) ->
 			gen_tcp:send(Socket, build_header(status_501_not_implemented(), status_501_not_implemented_data()))
 	end.
 
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
 handle_get_request(Socket, Request) ->
 	error_logger:info_msg("handle_get_request for uri: ~p~n", [Request#request.uri]),
 	
@@ -21,7 +29,7 @@ handle_get_request(Socket, Request) ->
 	case is_local_file(Request#request.uri) of 
 		true ->
 			serve_local_file(Socket, Request#request.uri);
-		false ->	
+		false -> 
 			redirect
 	end,
 	gen_tcp:close(Socket).
@@ -68,6 +76,8 @@ build_header(Status, Data) ->
 	 "Connection: close\n", 
 	 "Content-Type: text/html; charset=UTF-8\n\n", 
 	 Data].
+
+
 
 get_server() ->
 	"Server: MyErlangWebserver. Erlang-home-made-and-backed 0.01\n".

@@ -28,6 +28,7 @@
 %%% API
 %%%===================================================================
 
+
 start(Cfg) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Cfg, []).
 
@@ -42,16 +43,6 @@ stop_accepting_requests() ->
 
 start_accepting_requests() ->
     gen_server:call(?MODULE, {start_accepting_requests}).
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-%% start_link() ->
-%%     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
