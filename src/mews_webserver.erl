@@ -173,7 +173,7 @@ listen(Port) ->
 do_accept(Lsocket, N) ->
     case gen_tcp:accept(Lsocket) of 
 	{ok, Socket} ->
-	    spawn(fun() -> send_page(Socket) end), 
+	    spawn(fun() -> do_recv(Socket) end), 
 	    error_logger:info_msg("Spawned socket number: ~p~n", [N]),
 	    do_accept(Lsocket, N + 1);
 	{error, closed} -> 
@@ -181,15 +181,25 @@ do_accept(Lsocket, N) ->
 	    ok
     end.
 
-send_page(Socket) ->
-    %% TODO: need to make sure that we have read the entire request... 
-    case gen_tcp:recv(Socket, 0) of 
+-define(READ_SOCKET_TIMEOUT, 60*1000).
+
+do_recv(Socket) ->
+    case gen_tcp:recv(Socket, 0, ?READ_SOCKET_TIMEOUT) of 
 	{ok, Data} ->
 	    error_logger:info_msg("Received data: ~p~n",[Data]),
 	    RequestLines = string:tokens(binary_to_list(Data), "\r\n"),
+	    %% TODO-LHC:
+	    %%we got: Error in process <0.55.0> with exit value: {{badmatch,{bad_request,[some_reason]}},[{mews_webserver,do_recv,1,[{file,"src/mews_webserver.erl"},{line,191}]}]}
+	    %% so we should not do this match - or if we do - we should act and return
+	    %% a proper reply.
 	    {ok, ParsedRequest} = mews_parse_request:parse_request(RequestLines),
 	    error_logger:info_msg("Parsed Request: ~p~n", [ParsedRequest]),
-	    mews_handle_request:handle_request(Socket, ParsedRequest);
+	    mews_handle_request:handle_request(Socket, ParsedRequest),
+	    do_recv(Socket);
+	{error, timeout} ->
+	    gen_tcp:close(Socket),
+	    error_logger:info_msg("do_recv, socket closed, timout: ~p~n", [Socket]);
 	{error, closed} ->
+	    error_logger:info_msg("do_recv, socket closed: ~p~n", [Socket]),
 	    ok
     end.

@@ -31,8 +31,7 @@ handle_get_request(Socket, Request) ->
 			serve_local_file(Socket, Request#request.uri);
 		false -> 
 			redirect
-	end,
-	gen_tcp:close(Socket).
+	end.
 
 
 %% local file, not redirect.
