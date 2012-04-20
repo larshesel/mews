@@ -86,13 +86,13 @@ handle_call({change_port, NewPort}, _From, OldState) ->
 
     %% Update the configuration
     NewCfg = lists:map(fun({Name, Value}) -> 
-				case Name of 
-				    port ->
-					{port, NewPort};
-				    _ -> {Name, Value}
-				end
-			end,
-			OldState#state.cfg),
+			       case Name of 
+				   port ->
+				       {port, NewPort};
+				   _ -> {Name, Value}
+			       end
+		       end,
+		       OldState#state.cfg),
     error_logger:info_msg("NewConfig: ~p~n", [NewCfg]),
 
     %% start to listen on the new port.
