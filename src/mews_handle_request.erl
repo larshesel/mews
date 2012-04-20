@@ -42,7 +42,10 @@ serve_local_file(Socket, Uri) ->
 	true ->  %% local file
 	    %% read file info and send a header to the socket
 	    {ok, FileInfo} = file:read_file_info(File),
-	    gen_tcp:send(Socket, build_header(status_200_ok(), FileInfo#file_info.size, "text/html")),
+	    gen_tcp:send(Socket, 
+			 build_header(status_200_ok(), 
+				      FileInfo#file_info.size, 
+				      mime_types:get_mime_type(File))),
 
 	    %% open file, and stream it to the socket
 	    {ok, IoDevice} = file:open(File, [raw, read, binary]),
