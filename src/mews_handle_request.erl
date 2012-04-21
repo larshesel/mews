@@ -40,7 +40,7 @@ serve_local_file(Socket, Uri) ->
     File = [get_webroot(), Uri], 
     case filelib:is_regular(File) of
 	true ->  %% local file
-	    error_logger:info_msg("is a regular file: ~p~n", File),
+	    error_logger:info_msg("is a regular file: ~p~n", [File]),
 
 	    %% read file info and send a header to the socket
 	    {ok, FileInfo} = file:read_file_info(File),

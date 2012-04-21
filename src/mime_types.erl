@@ -10,11 +10,12 @@
 %% @end
 %%--------------------------------------------------------------------
 get_mime_type(FileName) ->
-    "." ++ Extension = filename:extension(FileName),
+    Extension = filename:extension(FileName),
     case string:to_lower(Extension) of 
-	"jpg" ->  "image/jpeg";
-	"jpeg" -> "image/jpeg";
-	"html" ->  "text/html";
-	"htm" -> "text/html";
+	".jpg" ->  "image/jpeg";
+	".jpeg" -> "image/jpeg";
+	".html" ->  "text/html";
+	".htm" -> "text/html";
+	".ico" ->  "image/x-icon";
 	_ -> {error, unknown}
     end.
