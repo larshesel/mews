@@ -1,3 +1,3 @@
 #!/bin/bash
 
-erl -pa ./ebin -s mews
+erl -pa ./ebin -s mews -config default

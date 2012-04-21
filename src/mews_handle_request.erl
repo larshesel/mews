@@ -40,6 +40,8 @@ serve_local_file(Socket, Uri) ->
     File = [get_webroot(), Uri], 
     case filelib:is_regular(File) of
 	true ->  %% local file
+	    error_logger:info_msg("is a regular file: ~p~n", File),
+
 	    %% read file info and send a header to the socket
 	    {ok, FileInfo} = file:read_file_info(File),
 	    gen_tcp:send(Socket, 
@@ -53,6 +55,7 @@ serve_local_file(Socket, Uri) ->
 	    error_logger:info_msg("finished streaming content~n"),
 	    file:close(IoDevice);
 	false -> 
+	    error_logger:info_msg("not a regular file: ~p~n", File),
 	    gen_tcp:send(Socket, build_header(status_404_not_found(), 
 					      iolist_size(status_404_not_found_data()), "text/html")),
 	    gen_tcp:send(Socket, status_404_not_found_data())
@@ -112,4 +115,6 @@ get_server() ->
     "Server: MyErlangWebserver. Erlang-home-made-and-backed 0.01\n".
 
 get_webroot() ->
-    "./test_data/webroot/".
+    {ok, Dir} = application:get_env(webroot),
+    Dir.
+

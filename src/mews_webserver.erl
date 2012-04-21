@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {cfg, listen_socket}).
+-record(state, {cfg, listen_socket, webroot}).
 
 %%%===================================================================
 %%% API
@@ -60,9 +60,21 @@ start_accepting_requests() ->
 %% @end
 %%--------------------------------------------------------------------
 init(Cfg) ->
-    error_logger:info_msg("gen_server:init, Cfg = ~p~n", [Cfg]),
-    ListenSocket = listen(proplists:get_value(port, Cfg)),
-    {ok, #state{cfg=Cfg, listen_socket=ListenSocket}}.
+    Webroot = application:get_env(webroot),
+    case Webroot of  
+	undefined ->
+	    {stop, {webroot, is_not_defined}};
+	_ ->
+	    {ok, Dir} = Webroot,
+	    case filelib:is_dir(Dir) of 
+		true ->
+		    error_logger:info_msg("gen_server:init, Cfg = ~p~n", [Cfg]),
+		    ListenSocket = listen(proplists:get_value(port, Cfg)),
+		    {ok, #state{cfg=Cfg, listen_socket=ListenSocket}};
+		false ->
+		    {stop, {webroot, Webroot, is_not_a_valid_directory}}
+	    end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -79,6 +91,7 @@ init(Cfg) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({change_port, NewPort}, _From, OldState) ->
+
     %% close the old listening socket
     gen_tcp:close(OldState#state.listen_socket),
 
