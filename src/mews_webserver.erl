@@ -12,9 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start/1, stop/0]).
--export([change_port/1, stop_accepting_requests/0, start_accepting_requests/0]).
-%%-export([listen/1, start/1]).
+-export([start/1, change_port/1, stop_accepting_requests/0, start_accepting_requests/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -31,9 +29,6 @@
 
 start(Cfg) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Cfg, []).
-
-stop() ->
-    gen_server:call(?MODULE, stop).
 
 change_port(Port) ->
     gen_server:call(?MODULE, {change_port, Port}).
@@ -60,6 +55,7 @@ start_accepting_requests() ->
 %% @end
 %%--------------------------------------------------------------------
 init(Cfg) ->
+    process_flag(trap_exit, true),
     Webroot = application:get_env(webroot),
     case Webroot of  
 	undefined ->
@@ -151,7 +147,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(Reason, _State) ->
+    error_logger:info_msg("mews_webserver is being terminated: ~p~n", [Reason]),
     ok.
 
 %%--------------------------------------------------------------------
