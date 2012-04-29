@@ -4,15 +4,14 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 15 Apr 2012 by Lars Hesel Christensen <>
+%%% Created : 29 Apr 2012 by Lars Hesel Christensen <>
 %%%-------------------------------------------------------------------
--module(mews_webserver).
-
+-module(mews_statistics).
 
 -behaviour(gen_server).
 
 %% API
--export([start/1, change_port/1, stop_accepting_requests/0, start_accepting_requests/0]).
+-export([start_link/1, connection_opened/0, get_opened_connections/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -20,24 +19,28 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {cfg, listen_socket, webroot}).
+-record(state, {number_of_requests}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
+connection_opened() ->
+    gen_server:cast(?MODULE, {connection_opened}).
 
-start(Cfg) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, Cfg, []).
+get_opened_connections() ->
+    gen_server:call(?MODULE, {conn_count}).
 
-change_port(Port) ->
-    gen_server:call(?MODULE, {change_port, Port}).
 
-stop_accepting_requests() ->
-    gen_server:call(?MODULE, {stop_accepting_requests}).
-
-start_accepting_requests() ->
-    gen_server:call(?MODULE, {start_accepting_requests}).
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link(Cfg) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, Cfg, []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -54,23 +57,8 @@ start_accepting_requests() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init(Cfg) ->
-    process_flag(trap_exit, true),
-    Webroot = application:get_env(webroot),
-    case Webroot of  
-	undefined ->
-	    {stop, {webroot, is_not_defined}};
-	_ ->
-	    {ok, Dir} = Webroot,
-	    case filelib:is_dir(Dir) of 
-		true ->
-		    error_logger:info_msg("gen_server:init, Cfg = ~p~n", [Cfg]),
-		    ListenSocket = listen(proplists:get_value(port, Cfg)),
-		    {ok, #state{cfg=Cfg, listen_socket=ListenSocket}};
-		false ->
-		    {stop, {webroot, Webroot, is_not_a_valid_directory}}
-	    end
-    end.
+init([]) ->
+    {ok, #state{number_of_requests = 0}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -86,29 +74,9 @@ init(Cfg) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({change_port, NewPort}, _From, OldState) ->
-
-    %% close the old listening socket
-    gen_tcp:close(OldState#state.listen_socket),
-
-    error_logger:info_msg("OldConfig: ~p~n", [OldState]),
-
-    %% Update the configuration
-    NewCfg = lists:map(fun({Name, Value}) -> 
-			       case Name of 
-				   port ->
-				       {port, NewPort};
-				   _ -> {Name, Value}
-			       end
-		       end,
-		       OldState#state.cfg),
-    error_logger:info_msg("NewConfig: ~p~n", [NewCfg]),
-
-    %% start to listen on the new port.
-    listen(proplists:get_value(port, NewCfg)),
-
-    Reply = ok,
-    {reply, Reply, OldState#state{cfg=NewCfg}}.
+handle_call({conn_count}, _From, State) ->
+    Reply = {ok, {conn_count, State#state.number_of_requests}},
+    {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,8 +88,9 @@ handle_call({change_port, NewPort}, _From, OldState) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({connection_opened}, State) ->
+    {noreply, State#state{number_of_requests = State#state.number_of_requests + 1}}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,8 +116,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(Reason, _State) ->
-    error_logger:info_msg("mews_webserver is being terminated: ~p~n", [Reason]),
+terminate(_Reason, _State) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -166,50 +134,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-
-
--define(TCP_OPTIONS, [binary, {packet, 0}, {active, false}, {reuseaddr, true}]).
-
-listen(Port) ->
-    case gen_tcp:listen(Port, ?TCP_OPTIONS) of 
-	{ok, LSocket} -> 
-	    spawn(fun() ->
-			  do_accept(LSocket)
-		  end),
-	    LSocket;
-	{error, Reason} -> {error, Reason}
-    end.
-
-do_accept(Lsocket) ->
-    case gen_tcp:accept(Lsocket) of 
-	{ok, Socket} ->
-	    spawn(fun() -> do_recv(Socket) end), 
-	    mews_statistics:connection_opened(),
-	    do_accept(Lsocket);
-	{error, closed} -> 
-	    %% the listening socket was closed, just end the process.
-	    ok
-    end.
-
--define(READ_SOCKET_TIMEOUT, 60*1000).
-
-do_recv(Socket) ->
-    case gen_tcp:recv(Socket, 0, ?READ_SOCKET_TIMEOUT) of 
-	{ok, Data} ->
-	    error_logger:info_msg("Received data: ~p~n",[Data]),
-	    RequestLines = string:tokens(binary_to_list(Data), "\r\n"),
-	    %% TODO-LHC:
-	    %%we got: Error in process <0.55.0> with exit value: {{badmatch,{bad_request,[some_reason]}},[{mews_webserver,do_recv,1,[{file,"src/mews_webserver.erl"},{line,191}]}]}
-	    %% so we should not do this match - or if we do - we should act and return
-	    %% a proper reply.
-	    {ok, ParsedRequest} = mews_parse_request:parse_request(RequestLines),
-	    error_logger:info_msg("Parsed Request: ~p~n", [ParsedRequest]),
-	    mews_handle_request:handle_request(Socket, ParsedRequest),
-	    do_recv(Socket);
-	{error, timeout} ->
-	    gen_tcp:close(Socket),
-	    error_logger:info_msg("do_recv, socket closed, timout: ~p~n", [Socket]);
-	{error, closed} ->
-	    error_logger:info_msg("do_recv, socket closed: ~p~n", [Socket]),
-	    ok
-    end.
