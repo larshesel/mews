@@ -10,11 +10,12 @@
 
 handle_request(Socket, Request) -> 
     error_logger:info_msg("handle_request: Request: ~p~n:", [Request]),
+    Rewritten = Request#request{uri = mews_rewrite:rewrite(Request#request.uri)},
     case Request#request.method of 
 	get ->
-	    handle_get_request(Socket, Request);
+	    handle_get_request(Socket, Rewritten);
 	_ ->
-	    error_logger:warning_msg("Request not supported: ~p~n:", [Request]),			
+	    error_logger:warning_msg("Request not supported: ~p~n:", [Rewritten]),
 	    gen_tcp:send(Socket, build_header(status_501_not_implemented(), iolist_size(status_501_not_implemented_data()), "text/html"))
     end.
 

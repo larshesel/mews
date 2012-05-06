@@ -6,4 +6,5 @@
               {mod,{mews_app,[]}},
               {env,[]},
               {modules,[mews,mews_app,mews_handle_request,mews_parse_request,
-                        mews_statistics,mews_sup,mews_webserver,mime_types]}]}.
+                        mews_rewrite,mews_statistics,mews_sup,mews_webserver,
+                        mime_types]}]}.
