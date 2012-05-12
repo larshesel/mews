@@ -14,6 +14,8 @@ handle_request(Socket, Request) ->
     case Request#request.method of 
 	get ->
 	    handle_get_request(Socket, Rewritten);
+	post -> 
+	    handle_post_request(Socket, Rewritten);
 	_ ->
 	    error_logger:warning_msg("Request not supported: ~p~n:", [Rewritten]),
 	    gen_tcp:send(Socket, build_header(status_501_not_implemented(), iolist_size(status_501_not_implemented_data()), "text/html"))
@@ -23,6 +25,9 @@ handle_request(Socket, Request) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+handle_post_request(Socket, Request) ->
+    ok.
 
 handle_get_request(Socket, Request) ->
     error_logger:info_msg("handle_get_request for uri: ~p~n", [Request#request.uri]),
@@ -42,8 +47,28 @@ serve_local_file(Socket, Uri) ->
     case filelib:is_regular(File) of
 	true ->  %% local file
 	    error_logger:info_msg("is a regular file: ~p~n", [File]),
+	    
+	    case is_cgi(File) of 
+		true -> process_cgi_file(Socket, File);
+		false ->
+		    process_plain_file(Socket, File)
+	    end;
+	false -> 
+	    error_logger:info_msg("not a regular file: ~p~n", [File]),
+	    gen_tcp:send(Socket, build_header(status_404_not_found(), 
+					      iolist_size(status_404_not_found_data()), "text/html")),
+	    gen_tcp:send(Socket, status_404_not_found_data())
+    end.
 
-	    %% read file info and send a header to the socket
+process_cgi_file(Socket, File) ->
+    %% spawn a separat process for executing the cgi script
+    error_logger:info_msg("Processing cgi file ~p~n", [File]),
+    spawn(fun() -> mews_cgi_executioner:execute_request(Socket, File) end).
+
+is_cgi(File) ->
+    lists:suffix(".cgi", lists:flatten(File)).
+
+process_plain_file(Socket, File) ->
 	    {ok, FileInfo} = file:read_file_info(File),
 	    gen_tcp:send(Socket, 
 			 build_header(status_200_ok(), 
@@ -54,14 +79,9 @@ serve_local_file(Socket, Uri) ->
 	    {ok, IoDevice} = file:open(File, [raw, read, binary]),
 	    do_stream_file(Socket, IoDevice),
 	    error_logger:info_msg("finished streaming content~n"),
-	    file:close(IoDevice);
-	false -> 
-	    error_logger:info_msg("not a regular file: ~p~n", File),
-	    gen_tcp:send(Socket, build_header(status_404_not_found(), 
-					      iolist_size(status_404_not_found_data()), "text/html")),
-	    gen_tcp:send(Socket, status_404_not_found_data())
-    end.
+	    file:close(IoDevice).
 
+    
 -define(FILE_READ_SIZE, 65536).
 
 do_stream_file(Sock, IoDevice) -> 
@@ -78,9 +98,6 @@ do_stream_file(Sock, IoDevice) ->
 	    error_logger:info_msg("do_stream_file: {error, Reason}!~n"),
 	    ok
     end.
-
-
-
 
 status_501_not_implemented() ->
     ["HTTP/1.1 501 Not Implemented\r\n"].

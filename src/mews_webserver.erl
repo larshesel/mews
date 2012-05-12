@@ -198,10 +198,6 @@ do_recv(Socket) ->
 	{ok, Data} ->
 	    error_logger:info_msg("Received data: ~p~n",[Data]),
 	    RequestLines = string:tokens(binary_to_list(Data), "\r\n"),
-	    %% TODO-LHC:
-	    %%we got: Error in process <0.55.0> with exit value: {{badmatch,{bad_request,[some_reason]}},[{mews_webserver,do_recv,1,[{file,"src/mews_webserver.erl"},{line,191}]}]}
-	    %% so we should not do this match - or if we do - we should act and return
-	    %% a proper reply.
 	    {ok, ParsedRequest} = mews_parse_request:parse_request(RequestLines),
 	    error_logger:info_msg("Parsed Request: ~p~n", [ParsedRequest]),
 	    mews_handle_request:handle_request(Socket, ParsedRequest),
