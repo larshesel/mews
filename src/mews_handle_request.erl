@@ -4,6 +4,10 @@
 -include_lib("kernel/include/file.hrl").
 -include("request.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -136,3 +140,15 @@ get_webroot() ->
     {ok, Dir} = application:get_env(webroot),
     Dir.
 
+
+
+%%%===================================================================
+%%% Internal unittests
+%%%===================================================================
+
+-ifdef(TEST).
+is_cgi_test_() ->
+    [?_assertEqual(true, is_cgi("testfile.cgi")),
+     ?_assertEqual(false, is_cgi("testfile.cig"))].
+
+-endif.
