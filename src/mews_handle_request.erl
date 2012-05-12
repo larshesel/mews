@@ -39,21 +39,21 @@ handle_get_request(Socket, Request) ->
     %% determine if uri can be served locally:
     case is_local_file(Request#request.uri) of 
 	true ->
-	    serve_local_file(Socket, Request#request.uri);
+	    serve_local_file(Socket, Request);
 	false -> 
 	    redirect
     end.
 
 
 %% local file, not redirect.
-serve_local_file(Socket, Uri) ->
-    File = [get_webroot(), Uri], 
+serve_local_file(Socket, Request) ->
+    File = [get_webroot(), Request#request.uri], 
     case filelib:is_regular(File) of
 	true ->  %% local file
 	    error_logger:info_msg("is a regular file: ~p~n", [File]),
 	    
 	    case is_cgi(File) of 
-		true -> process_cgi_file(Socket, File);
+		true -> process_cgi_file(Socket, Request, File);
 		false ->
 		    process_plain_file(Socket, File)
 	    end;
@@ -64,10 +64,10 @@ serve_local_file(Socket, Uri) ->
 	    gen_tcp:send(Socket, status_404_not_found_data())
     end.
 
-process_cgi_file(Socket, File) ->
+process_cgi_file(Socket, Request, File) ->
     %% spawn a separat process for executing the cgi script
     error_logger:info_msg("Processing cgi file ~p~n", [File]),
-    spawn(fun() -> mews_cgi_executioner:execute_request(Socket, File) end).
+    spawn(fun() -> mews_cgi_executioner:execute_request(Socket, Request, File) end).
 
 is_cgi(File) ->
     lists:suffix(".cgi", lists:flatten(File)).
